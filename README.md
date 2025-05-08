@@ -21,3 +21,17 @@ A RESTful API built in Go that allows users to manage their personal book collec
 - PostgreSQL
 - Goose
 - JWT for authentication
+- Grafana, Loki and Prometheus
+
+## **Environement Variables**
+
+Set up necessary environment variables:
+
+```sh
+POSTGRES_HOST=database # Use the service-name setted in the Cluster for the db.
+POSTGRES_USER=your-user
+POSTGRES_PASSWORD=your-password
+POSTGRES_DB=your-db-name
+POSTGRES_SSLMODE=disable
+# ==============================================================================
+KEYS_DIR=your-RS256-keys
