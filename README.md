@@ -13,6 +13,8 @@ A RESTful API built in Go that allows users to manage their personal book collec
 - User authentication and authorization
 - CRUD operations for books in a user's collection
 - Deployment in a cluster using KIND
+- Monitoring Grafana, Loki and Prometheus
+
 
 ## **Tech Stack**
 
@@ -21,7 +23,6 @@ A RESTful API built in Go that allows users to manage their personal book collec
 - PostgreSQL
 - Goose
 - JWT for authentication
-- Grafana, Loki and Prometheus
 
 ## **Environement Variables**
 
