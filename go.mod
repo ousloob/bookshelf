@@ -1,6 +1,6 @@
 module github.com/ousloob/bookshelf
 
-go 1.23.6
+go 1.24.3
 
 require (
 	github.com/ardanlabs/conf/v3 v3.1.2
