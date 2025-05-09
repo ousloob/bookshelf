@@ -13,7 +13,7 @@ import (
 
 	"github.com/ardanlabs/conf/v3"
 	"github.com/lmittmann/tint"
-	"github.com/ousloob/bookshelf/api/inventory/routing"
+	"github.com/ousloob/bookshelf/api/services/inventory/routing"
 	"github.com/ousloob/bookshelf/business/sys/database"
 )
 
