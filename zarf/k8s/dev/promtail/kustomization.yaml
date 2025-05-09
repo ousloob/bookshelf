@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: bookshelf-system
+resources:
+- promtail.yaml
+images:
+- name: promtail
+  newName: grafana/promtail
+  newTag: 3.5.0
+- name: promtail-image
+  newName: grafana/promtail
+  newTag: 3.5.0

@@ -24,7 +24,7 @@ func main() {
 		AddSource:  true,
 		Level:      slog.LevelDebug,
 		TimeFormat: time.DateTime,
-	})).With("API", "SALES")
+	})).With("API", "INVENTORY")
 
 	ctx := context.Background()
 	if err := run(ctx, logger); err != nil {

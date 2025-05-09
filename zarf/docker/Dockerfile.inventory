@@ -1,0 +1,39 @@
+# Build the Go Binary.
+FROM golang:1.24.3 AS build_inventory
+
+ENV CGO_ENABLED=0
+ARG BUILD_REF
+
+# Copy the source code into the container.
+COPY . /bookshelf
+
+# Build the admin binary.
+WORKDIR /bookshelf/api/tooling/admin
+RUN go build -ldflags "-X main.build=${BUILD_REF}"
+
+# Build the inventory binary.
+WORKDIR /bookshelf/api/services/inventory
+RUN go build -ldflags "-X main.build=${BUILD_REF}"
+
+# Run the Go Binary in Alpine.
+FROM alpine:3.21.3
+
+ARG BUILD_DATE
+ARG BUILD_REF
+
+RUN addgroup -g 10000 -S inventory && \
+    adduser -u 10000 -h /bookshelf -G inventory -S inventory
+
+WORKDIR /bookshelf
+COPY --from=build_inventory --chown=inventory:inventory /bookshelf/api/tooling/admin/admin /bookshelf/admin
+COPY --from=build_inventory --chown=inventory:inventory /bookshelf/api/services/inventory/inventory /bookshelf/inventory
+
+USER inventory
+CMD ["./inventory"]
+
+LABEL org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.title="inventory-api" \
+      org.opencontainers.image.authors="Oussama Moulana" \
+      org.opencontainers.image.source="https://github.com/loobyte/bookshelf/tree/main/api/services/inventory" \
+      org.opencontainers.image.revision="${BUILD_REF}" \
+      org.opencontainers.image.vendor="Loobyte"

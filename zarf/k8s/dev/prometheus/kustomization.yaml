@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: bookshelf-system
+resources:
+- prometheus.yaml
+images:
+- name: prometheus
+  newName: prom/prometheus
+  newTag: v3.3.1
+- name: prometheus-image
+  newName: prom/prometheus
+  newTag: v3.3.1

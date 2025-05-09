@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: goose
+spec:
+  template:
+    metadata:
+      labels:
+        app: goose
+    spec:
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+      restartPolicy: Never
+      containers:
+        - name: goose
+          image: goose-image
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - secretRef:
+                name: postgres-creds
+          command:
+            - sh
+            - -c
+            - |
+              goose postgres "user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB} host=${POSTGRES_HOST} sslmode=${POSTGRES_SSLMODE}" up
