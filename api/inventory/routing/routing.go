@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/go-chi/chi/v5"
-	v1 "github.com/ousloob/bookshelf/api/sales/routing/v1"
+	v1 "github.com/ousloob/bookshelf/api/inventory/routing/v1"
 	"github.com/ousloob/bookshelf/support/web/mid"
 )
 
