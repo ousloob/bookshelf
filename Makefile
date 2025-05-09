@@ -13,10 +13,10 @@ POSTGRES 			:= postgres:17.4
 
 KIND_CLUSTER 		:= bookshelf-cluster
 NAMESPACE       	:= bookshelf-system
-SALES_APP			:= sales
+INVENTORY_APP			:= inventory
 BASE_IMAGE_NAME		:= localhost/loobyte
-SALES_VERSION		:= v0.3.0
-SALES_IMAGE 		:= $(BASE_IMAGE_NAME)/$(SALES_APP):$(SALES_VERSION)
+INVENTORY_VERSION		:= v0.3.0
+INVENTORY_IMAGE 		:= $(BASE_IMAGE_NAME)/$(INVENTORY_APP):$(INVENTORY_VERSION)
 GOOSE_APP			:= goose
 GOOSE_VERSION		:= v0.1.0
 GOOSE_IMAGE			:= $(BASE_IMAGE_NAME)/$(GOOSE_APP):$(GOOSE_VERSION)
@@ -67,10 +67,10 @@ vulncheck:
 .PHONY: run run-help curl-live curl-ready
 
 run:
-	go run api/services/sales/main.go
+	go run api/services/inventory/main.go
 
 help:
-	go run api/services/sales/main.go --help
+	go run api/services/inventory/main.go --help
 
 curl-live:
 	curl -il -X GET http://localhost:8080/liveness
@@ -85,9 +85,9 @@ curl-ready:
 
 build:
 	docker build \
-		-f zarf/docker/Dockerfile.sales \
-		-t $(SALES_IMAGE) \
-		--build-arg BUILD_REF=$(SALES_VERSION) \
+		-f zarf/docker/Dockerfile.inventory \
+		-t $(INVENTORY_IMAGE) \
+		--build-arg BUILD_REF=$(INVENTORY_VERSION) \
 		--build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
 		.
 
@@ -118,7 +118,7 @@ update-images:
 	@( cd zarf/k8s/dev/prometheus && kustomize edit set image prometheus=$(PROMETHEUS) )
 	@( cd zarf/k8s/dev/database && kustomize edit set image postgres=$(POSTGRES) )
 	@( cd zarf/k8s/dev/migrations && kustomize edit set image goose-image=$(GOOSE_IMAGE) )
-	@( cd zarf/k8s/dev/sales && kustomize edit set image sales-image=$(SALES_IMAGE) )
+	@( cd zarf/k8s/dev/inventory && kustomize edit set image inventory-image=$(INVENTORY_IMAGE) )
 
 dev-up: update-images
 	kind create cluster \
@@ -129,7 +129,7 @@ dev-up: update-images
 	kubectl wait --timeout=120s --namespace=local-path-storage \
 	--for=condition=Available deployment/local-path-provisioner
 
-	kubectl apply -f zarf/k8s/base/sales/namespace.yaml
+	kubectl apply -f zarf/k8s/base/inventory/namespace.yaml
 
 	kind load docker-image $(GRAFANA) --name $(KIND_CLUSTER) & \
 	kind load docker-image $(LOKI) --name $(KIND_CLUSTER) & \
@@ -154,7 +154,7 @@ dev-status-all:
 .PHONY: dev-load dev-apply dev-restart dev-restart-db dev-secrets
 
 dev-load:
-	kind load docker-image $(SALES_IMAGE) --name $(KIND_CLUSTER)
+	kind load docker-image $(INVENTORY_IMAGE) --name $(KIND_CLUSTER)
 	kind load docker-image $(GOOSE_IMAGE) --name $(KIND_CLUSTER)
 
 dev-apply:
@@ -170,11 +170,11 @@ dev-apply:
 	kustomize build zarf/k8s/dev/migrations | kubectl apply -f -
 	kubectl wait --namespace=$(NAMESPACE) --for=condition=complete --timeout=120s job/$(GOOSE_APP)
 
-	kustomize build zarf/k8s/dev/sales | kubectl apply -f -
-	kubectl wait pods --namespace=$(NAMESPACE) --selector app=$(SALES_APP) --timeout=120s --for=condition=Ready
+	kustomize build zarf/k8s/dev/inventory | kubectl apply -f -
+	kubectl wait pods --namespace=$(NAMESPACE) --selector app=$(INVENTORY_APP) --timeout=120s --for=condition=Ready
 
 dev-restart:
-	kubectl rollout restart deployment $(SALES_APP) --namespace=$(NAMESPACE)
+	kubectl rollout restart deployment $(INVENTORY_APP) --namespace=$(NAMESPACE)
 
 dev-restart-db:
 	kubectl rollout restart statefulset database --namespace=$(NAMESPACE)
@@ -207,7 +207,7 @@ dev-update-apply: build build-goose dev-load dev-apply
 .PHONY: dev-logs dev-logs-db dev-logs-goose dev-logs-grafana dev-logs-loki dev-logs-promtail
 
 dev-logs:
-	kubectl logs --namespace=$(NAMESPACE) -l app=$(SALES_APP) --all-containers=true -f --tail=100
+	kubectl logs --namespace=$(NAMESPACE) -l app=$(INVENTORY_APP) --all-containers=true -f --tail=100
 
 dev-logs-db:
 	kubectl logs --namespace=$(NAMESPACE) -l app=database --all-containers=true -f --tail=100
@@ -226,16 +226,16 @@ dev-logs-promtail:
 
 # ------------------------------------------------------------------------------
 
-.PHONY: dev-describe-node dev-describe-deployment dev-describe-sales dev-describe-db dev-describe-goose dev-describe-grafana
+.PHONY: dev-describe-node dev-describe-deployment dev-describe-inventory dev-describe-db dev-describe-goose dev-describe-grafana
 
 dev-describe-node:
 	kubectl describe node
 
 dev-describe-deployment:
-	kubectl describe deployment --namespace=$(NAMESPACE) $(SALES_APP)
+	kubectl describe deployment --namespace=$(NAMESPACE) $(INVENTORY_APP)
 
-dev-describe-sales:
-	kubectl describe pod --namespace=$(NAMESPACE) -l app=$(SALES_APP)
+dev-describe-inventory:
+	kubectl describe pod --namespace=$(NAMESPACE) -l app=$(INVENTORY_APP)
 
 dev-describe-db:
 	kubectl describe pod --namespace=$(NAMESPACE) -l app=database
