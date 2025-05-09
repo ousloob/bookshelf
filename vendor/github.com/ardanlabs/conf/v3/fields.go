@@ -48,6 +48,8 @@ type FieldOptions struct {
 	Noprint       bool
 	Required      bool
 	Mask          bool
+	NotZero       bool
+	Immutable     bool
 }
 
 // extractFields uses reflection to examine the struct and generate the keys.
@@ -172,8 +174,12 @@ func parseTag(tagStr string) (FieldOptions, error) {
 				f.Noprint = true
 			case "required":
 				f.Required = true
+			case "notzero":
+				f.NotZero = true
 			case "mask":
 				f.Mask = true
+			case "immutable":
+				f.Immutable = true
 			}
 		case 2:
 			tagPropVal := strings.TrimSpace(vals[1])
@@ -258,20 +264,6 @@ func camelSplit(src string) []string {
 func processField(settingDefault bool, value string, field reflect.Value) error {
 	typ := field.Type()
 
-	// Look for a Set method.
-	setter := setterFrom(field)
-	if setter != nil {
-		return setter.Set(value)
-	}
-
-	if t := textUnmarshaler(field); t != nil {
-		return t.UnmarshalText([]byte(value))
-	}
-
-	if b := binaryUnmarshaler(field); b != nil {
-		return b.UnmarshalBinary([]byte(value))
-	}
-
 	if typ.Kind() == reflect.Ptr {
 		typ = typ.Elem()
 		if field.IsNil() {
@@ -284,6 +276,20 @@ func processField(settingDefault bool, value string, field reflect.Value) error 
 	// proper setting.
 	if settingDefault && !field.IsZero() {
 		return nil
+	}
+
+	// Look for a Set method.
+	setter := setterFrom(field)
+	if setter != nil {
+		return setter.Set(value)
+	}
+
+	if t := textUnmarshaler(field); t != nil {
+		return t.UnmarshalText([]byte(value))
+	}
+
+	if b := binaryUnmarshaler(field); b != nil {
+		return b.UnmarshalBinary([]byte(value))
 	}
 
 	switch typ.Kind() {

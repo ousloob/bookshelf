@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"sort"
 	"strings"
 )
 
@@ -60,7 +61,6 @@ func Parse(prefix string, cfg interface{}, parsers ...Parsers) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("generating config version: %w", err)
 		}
-
 		return version, ErrHelpWanted
 	}
 
@@ -69,33 +69,30 @@ func Parse(prefix string, cfg interface{}, parsers ...Parsers) (string, error) {
 
 // String returns a stringified version of the provided conf-tagged
 // struct, minus any fields tagged with `noprint`.
-func String(v interface{}) (string, error) {
+func String(v any) (string, error) {
 	fields, err := extractFields(nil, v)
 	if err != nil {
 		return "", err
 	}
 
+	sf := sortedFields{
+		fields: fields,
+	}
+	sort.Sort(&sf)
+
 	var s strings.Builder
-	for i, fld := range fields {
+	for i, fld := range sf.fields {
 		if fld.Options.Noprint {
 			continue
 		}
 
-		s.WriteString(flagUsage(fld))
+		s.WriteString(longOptInfo(fld))
 		s.WriteString("=")
 		v := fmt.Sprintf("%v", fld.Field.Interface())
 
 		switch {
 		case fld.Options.Mask:
-			if u, err := url.Parse(v); err == nil {
-				userPass := u.User.String()
-				if userPass != "" {
-					v = strings.Replace(v, userPass, "xxxxxx:xxxxxx", 1)
-					s.WriteString(v)
-					break
-				}
-			}
-			s.WriteString("xxxxxx")
+			s.WriteString(maskVal(v))
 
 		default:
 			s.WriteString(v)
@@ -107,6 +104,22 @@ func String(v interface{}) (string, error) {
 	}
 
 	return s.String(), nil
+}
+
+// maskVal masks an entire string or the user:password pair of a URL.
+func maskVal(v string) string {
+	if v == "" {
+		return ""
+	}
+
+	mask := "xxxxxx"
+	if u, err := url.Parse(v); err == nil {
+		userPass := u.User.String()
+		if userPass != "" {
+			mask = strings.Replace(v, userPass, "xxxxxx:xxxxxx", 1)
+		}
+	}
+	return mask
 }
 
 // UsageInfo provides output to display the config usage on the command line.
@@ -133,6 +146,7 @@ func VersionInfo(namespace string, v interface{}) (string, error) {
 			str.WriteString(fields[i].Field.String())
 			continue
 		}
+
 		if fields[i].Name == descKey && fields[i].Field.Len() > 0 {
 			if str.Len() > 0 {
 				str.WriteString("\n")
@@ -141,6 +155,7 @@ func VersionInfo(namespace string, v interface{}) (string, error) {
 			break
 		}
 	}
+
 	return str.String(), nil
 }
 
@@ -148,6 +163,7 @@ func VersionInfo(namespace string, v interface{}) (string, error) {
 
 // parse parses configuration into the provided struct.
 func parse(args []string, namespace string, cfgStruct interface{}) error {
+
 	// Create the flag and env sources.
 	flag, err := newSourceFlag(args)
 	if err != nil {
@@ -160,6 +176,7 @@ func parse(args []string, namespace string, cfgStruct interface{}) error {
 	if err != nil {
 		return err
 	}
+
 	if len(fields) == 0 {
 		return errors.New("no fields identified in config struct")
 	}
@@ -189,18 +206,27 @@ func parse(args []string, namespace string, cfgStruct interface{}) error {
 			}
 		}
 
+		// If this is an immutable field then don't let it
+		// be overridden.
+		if field.Options.Immutable {
+			continue
+		}
+
+		// Flag to check if an override value is provided.
+		foundOverride := false
+
 		// Process each field against all sources.
 		for _, sourcer := range sources {
 			if sourcer == nil {
 				continue
 			}
 
-			value, provided := sourcer.Source(field)
-			if !provided {
+			value, ok := sourcer.Source(field)
+			if !ok {
 				continue
 			}
 
-			// A value was found so update the struct value with it.
+			// A override was found so update the struct value with it.
 			if err := processField(false, value, field.Field); err != nil {
 				return &FieldError{
 					fieldName: field.Name,
@@ -209,11 +235,16 @@ func parse(args []string, namespace string, cfgStruct interface{}) error {
 					err:       err,
 				}
 			}
+
+			foundOverride = true
 		}
 
-		// If this key is not provided by any source, check if it was
-		// required to be provided.
-		if field.Options.Required && field.Field.IsZero() {
+		if field.Options.NotZero && field.Field.IsZero() {
+			return fmt.Errorf("field %s is set to zero value", field.Name)
+		}
+
+		// If the field is marked 'required', check if no value was provided.
+		if field.Options.Required && !foundOverride {
 			return fmt.Errorf("required field %s is missing value", field.Name)
 		}
 	}

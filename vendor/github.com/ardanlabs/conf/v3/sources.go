@@ -57,7 +57,7 @@ func newSourceEnv(namespace string) *env {
 	return &env{m: m}
 }
 
-// Source implements the confg.Sourcer interface. It returns the stringfied value
+// Source implements the conf.sourcer interface. It returns the stringfied value
 // stored at the specified key from the environment.
 func (e *env) Source(fld Field) (string, bool) {
 	k := strings.ToUpper(strings.Join(fld.EnvKey, `_`))
@@ -71,7 +71,7 @@ func envUsage(namespace string, fld Field) string {
 	if namespace == "" {
 		uspace = uspace[1:]
 	}
-	return "$" + uspace
+	return uspace
 }
 
 // =============================================================================
@@ -89,7 +89,7 @@ type flag struct {
 }
 
 // newSourceFlag parsing a string of command line arguments. NewFlag will return
-// errHelpWanted, if the help flag is identifyed. This code is adapted
+// errHelpWanted, if the help flag is identified. This code is adapted
 // from the Go standard library flag package.
 func newSourceFlag(args []string) (*flag, error) {
 	m := make(map[string]flagValue)
@@ -186,7 +186,7 @@ func (f *flag) source(key string, isBool bool) (string, bool) {
 	return "true", found
 }
 
-// Source implements the confg.Sourcer interface. Returns the stringfied value
+// Source implements the conf.sourcer interface. Returns the stringfied value
 // stored at the specified key from the flag source.
 func (f *flag) Source(fld Field) (string, bool) {
 	if fld.Options.ShortFlagChar != 0 {
@@ -200,13 +200,20 @@ func (f *flag) Source(fld Field) (string, bool) {
 
 // flagUsage constructs a usage string for the flag argument.
 func flagUsage(fld Field) string {
-	usage := "--" + strings.ToLower(strings.Join(fld.FlagKey, `-`))
+	usage := "    "
+
 	if fld.Options.ShortFlagChar != 0 {
-		flagKey := []string{string(fld.Options.ShortFlagChar)}
-		usage += "/-" + strings.ToLower(strings.Join(flagKey, `-`))
+		usage = "-" + strings.ToLower(string(fld.Options.ShortFlagChar)) + ", "
 	}
 
+	usage += "--" + strings.ToLower(strings.Join(fld.FlagKey, `-`))
+
 	return usage
+}
+
+// longOptInfo constructs a long option description string.
+func longOptInfo(fld Field) string {
+	return "    --" + strings.ToLower(strings.Join(fld.FlagKey, `-`))
 }
 
 /*

@@ -6,7 +6,7 @@ It is compatible with the GNU extensions to the POSIX recommendations
 for command-line options. See
 http://www.gnu.org/software/libc/manual/html_node/Argument-Syntax.html
 
-Flags
+# Flags
 
 There are no hard bindings for this package. This package takes a struct
 value and parses it for both the environment and flags. It supports several tags
@@ -18,27 +18,28 @@ to customize the flag options.
 	short    - Denotes a shorthand option for the flag.
 	noprint  - Denotes to not include the field in any display string.
 	mask     - Includes the field in any display string but masks out the value.
-	required - Denotes a value must be provided.
+	required - Denotes a overriding value must be provided using a flag or env variable.
+	notzero  - Denotes a field can't be set to its zero value.
 	help     - Provides a description for the help.
 
 The field name and any parent struct name will be used for the long form of
 the command name unless the name is overridden.
 
-Example Usage
+# Example Usage
 
-As an example, using this config struct:
+As an example, using "APP" prefix and this config struct:
 
 	type ip struct {
-		Name string `conf:"default:localhost,env:IP_NAME_VAR"`
-		IP   string `conf:"default:127.0.0.0"`
+		Name string `conf:"default:localhost"`
+		IP   string `conf:"default:127.0.0.0,env:IP_VAR"`
 	}
 	type Embed struct {
 		Name     string        `conf:"default:bill"`
 		Duration time.Duration `conf:"default:1s,flag:e-dur,short:d"`
 	}
 	type config struct {
-		AnInt   int    `conf:"default:9"`
-		AString string `conf:"default:B,short:s"`
+		AnInt   map[string]int `conf:"default:min:0;max:9,help:map example"`
+		AString []string       `conf:"default:A;B;C,short:a,help:slice example"`
 		Bool    bool
 		Skip    string `conf:"-"`
 		IP      ip
@@ -47,22 +48,29 @@ As an example, using this config struct:
 
 The following usage information would be output you can display.
 
-Usage: conf.test [options] [arguments]
+Usage: conf.test [options...] [arguments...]
 
 OPTIONS
-  --an-int/$CRUD_AN_INT         <int>       (default: 9)
-  --a-string/-s/$CRUD_A_STRING  <string>    (default: B)
-  --bool/$CRUD_BOOL             <bool>
-  --ip-name/$CRUD_IP_NAME_VAR   <string>    (default: localhost)
-  --ip-ip/$CRUD_IP_IP           <string>    (default: 127.0.0.0)
-  --name/$CRUD_NAME             <string>    (default: bill)
-  --e-dur/-d/$CRUD_DURATION     <duration>  (default: 1s)
-  --help/-h
-  display this help message
-  --version/-v
-  display version information
+  -a, --a-string  <string>,[string...]  (default: A;B;C)        slice example
+      --an-int    <value>               (default: min:0;max:9)  map example
+      --bool      <bool>
+  -d, --e-dur     <duration>            (default: 1s)
+  -h, --help                                                    display this help message
+      --ip-ip     <string>              (default: 127.0.0.0)
+      --ip-name   <string>              (default: localhost)
+      --name      <string>              (default: bill)
+  -v, --version                                                 display version
 
-Example Parsing
+ENVIRONMENT
+  APP_A_STRING  <string>,[string...]  (default: A;B;C)        slice example
+  APP_AN_INT    <value>               (default: min:0;max:9)  map example
+  APP_BOOL      <bool>
+  APP_DURATION  <duration>            (default: 1s)
+  APP_IP_VAR    <string>              (default: 127.0.0.0)
+  APP_IP_NAME   <string>              (default: localhost)
+  APP_NAME      <string>              (default: bill)
+
+# Example Parsing
 
 There is an API called Parse that can process a config struct with environment
 variable and command line flag overrides.
@@ -79,7 +87,7 @@ variable and command line flag overrides.
 	}
 
 There is also YAML support using the yaml package that is part of
-this modeule.
+this module.
 
 	var yamlData = `
 	a: Easy!
@@ -111,7 +119,7 @@ this modeule.
 There is a WithParse function that takes a slice of bytes containing the YAML
 or WithParseReader that takes any concrete value that knows how to Read.
 
-Command Line Args
+# Command Line Args
 
 Additionally, if the config struct has a field of the slice type conf.Args
 then it will be populated with any remaining arguments from the command line
@@ -136,7 +144,7 @@ such as this:
 	arg1 := cfg.Args.Num(1) // "http"
 	arg2 := cfg.Args.Num(2) // "" empty string: not enough arguments
 
-Version Information
+# Version Information
 
 You can add a version with a description by adding the Version type to
 your config type and set these values at run time for display.
